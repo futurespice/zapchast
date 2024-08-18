@@ -1,18 +1,15 @@
 # Используем официальный образ Python 3.11
-FROM python:3.11-slim
+FROM python:3.11
 
 # Устанавливаем рабочую директорию в контейнере
 WORKDIR /app
 
-# Устанавливаем зависимости
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копируем файлы зависимостей и устанавливаем их
+# Копируем файлы зависимостей
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && apt-get install -y postgresql-client
 # Копируем остальные файлы проекта
 COPY . .
 

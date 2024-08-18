@@ -69,19 +69,19 @@ WSGI_APPLICATION = 'zapchast_kg.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 
-# DATABASES = {
-#     'default': dj_database_url.config(default=config('DATABASE_URL'))
-# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('SQL_NAME'),
-        'USER': config('SQL_USER'),
-        'PASSWORD': config('SQL_PASSWORD'),
-        'HOST': config('SQL_HOST'),
-        'PORT': config('SQL_PORT'),
-    }
+    'default': dj_database_url.config(default=config('DATABASE_URL'))
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': config('SQL_NAME'),
+#         'USER': config('SQL_USER'),
+#         'PASSWORD': config('SQL_PASSWORD'),
+#         'HOST': config('SQL_HOST'),
+#         'PORT': config('SQL_PORT'),
+#     }
+# }
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',
