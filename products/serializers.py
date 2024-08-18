@@ -1,24 +1,21 @@
 from rest_framework import serializers
 from .models import Category, Subcategory, Product, ProductImage, Review, Favorite
-
+from django.conf import settings
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
 
-
 class SubcategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Subcategory
         fields = '__all__'
 
-
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'is_main']
-
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='user.username')
@@ -27,31 +24,30 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'user', 'rating', 'comment', 'created_at']
 
-
 class ProductSerializer(serializers.ModelSerializer):
-    seller = serializers.ReadOnlyField(source='seller.username')
-    images = ProductImageSerializer(many=True, read_only=True)
-    reviews = ReviewSerializer(many=True, read_only=True)
-    average_rating = serializers.SerializerMethodField()
-
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = ['id', 'name', 'description', 'price', 'subcategory', 'seller', 'created_at', 'updated_at']
+        read_only_fields = ['seller', 'created_at', 'updated_at']
 
-    def get_average_rating(self, obj):
-        reviews = obj.reviews.all()
-        if reviews:
-            return sum(review.rating for review in reviews) / len(reviews)
-        return None
+    def to_internal_value(self, data):
+        # Если переводы названия не предоставлены, используем значение 'name'
+        name = data.get('name', '')
+        for lang_code, _ in settings.LANGUAGES:
+            if f'name_{lang_code}' not in data:
+                data[f'name_{lang_code}'] = name
+
+        # Убираем ненужные поля описания
+        for lang_code, _ in settings.LANGUAGES:
+            data.pop(f'description_{lang_code}', None)
+
+        return super().to_internal_value(data)
 
     def create(self, validated_data):
-        images_data = self.context.get('view').request.FILES
-        product = Product.objects.create(**validated_data)
-
-        for image_data in images_data.getlist('images'):
-            ProductImage.objects.create(product=product, image=image_data)
-
-        return product
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['seller'] = request.user
+        return super().create(validated_data)
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
@@ -61,8 +57,3 @@ class FavoriteSerializer(serializers.ModelSerializer):
         model = Favorite
         fields = ['id', 'user', 'product', 'added_at']
         read_only_fields = ['user']
-
-
-
-
-

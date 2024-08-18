@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Subcategory, Product, Review, Favorite
 from .serializers import CategorySerializer, SubcategorySerializer, ProductSerializer, ReviewSerializer, FavoriteSerializer
@@ -15,13 +16,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
-
 class SubcategoryViewSet(viewsets.ModelViewSet):
     queryset = Subcategory.objects.all()
     serializer_class = SubcategorySerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['category']
-
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
@@ -32,8 +31,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ['price', 'created_at']
 
     def get_queryset(self):
-        return Product.objects.select_related('subcategory__category').all()
-
+        return Product.objects.select_related('subcategory__category', 'seller').all()
 
     @method_decorator(cache_page(60 * 15))  # кэширование на 15 минут
     def list(self, request, *args, **kwargs):
@@ -44,6 +42,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        if self.request.user.user_type != 2:  # Предполагается, что 2 - это тип "продавец"
+            raise PermissionDenied("Only sellers can create products.")
         serializer.save(seller=self.request.user)
 
     @swagger_auto_schema(
@@ -104,16 +104,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         recommended_products = Product.objects.order_by('?')[:5]
         serializer = self.get_serializer(recommended_products, many=True)
         return Response(serializer.data)
-
-    @action(detail=True, methods=['post'])
-    def rate(self, request, pk=None):
-        product = self.get_object()
-        rating = request.data.get('rating')
-        if rating is not None:
-            # Здесь можно добавить логику сохранения рейтинга
-            return Response({'status': 'rating saved'})
-        return Response({'error': 'Rating is required'}, status=400)
-
 
 class FavoriteViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteSerializer
